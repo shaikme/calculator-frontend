@@ -3,25 +3,32 @@
 	const button = doc.querySelector('.calculator__button');
 	const messageBox = doc.querySelector('.calculator__messageBox');
 	const resultBox = doc.querySelector('.calculator__result');
-	const errorMessage = observableValue(null);
-	const resultValue = observableValue(null);
+	const defaultValue = {
+		input: '',
+		value: ''
+	};
+	const errorMessage = observableValue('');
+	const resultValue = observableValue(defaultValue);
+	const loadingFlag = observableValue(false);
 
 	doc.addEventListener('keypress', (e) => {
 		if (e.key === 'Enter') submitHandler(resultValue, errorMessage);
 	});
 	button.addEventListener('click', submitHandler.bind(null, resultValue, errorMessage));
 	input.addEventListener('input', () => {
-		if (resultValue() !== '') resultValue('');
-		if (errorMessage()) errorMessage('');
+		if (resultValue().value !== '') resultValue(defaultValue);
+		if (errorMessage()) errorMessage(null);
 	});
 
 	errorMessage.subscribe(message => {
 		messageBox.textContent = message;
 	});
 
-	resultValue.subscribe(value => {
-		resultBox.textContent = '= ' + value
+	resultValue.subscribe(data => {
+		resultBox.textContent = '= ' + data.value
 	});
+
+	loadingFlag.subscribe(value => button.setAttribute('disabled', value));
 
 	function observableValue(value) {
 		const listeners = [];
@@ -44,11 +51,30 @@
 	}
 
 	function submitHandler(resultValue, errorMessage) {
-		if (input.value !== '') {
-			fetch(`https://calc-server-xhelzbygxu.now.sh/calculus?query=${encodeURIComponent(input.value)}`)
-				.then(response => response.json().then((json) => response.ok ? json : Promise.reject(json)))
-				.then(response => { resultValue(response.result); })
-				.catch(error => { errorMessage(error.message ? error.message : 'something went wrong'); })
+		if (input.value === '' || input.value === resultValue().input
+		|| loadingFlag() || errorMessage()) return;
+		let base64String;
+
+
+		try {
+			base64String = window.btoa(input.value)
+		} catch(e) {
+			return errorMessage('invalid expression');
 		}
+
+		loadingFlag(true);
+		fetch(`https://calc-server-fyunjxifjr.now.sh/calculus?query=${window.encodeURI(base64String)}`)
+			.then(response => response.json().then((json) => response.ok ? json : Promise.reject(json)))
+			.then(response => {
+				resultValue({
+					input: input.value,
+					value: response.result
+				});
+				loadingFlag(false);
+			})
+			.catch(error => {
+				errorMessage(error.message ? error.message : 'something went wrong');
+				loadingFlag(false);
+			})
 	}
 })(document)
