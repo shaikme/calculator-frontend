@@ -45,7 +45,7 @@
 
 	function submitHandler(resultValue, errorMessage) {
 		if (input.value !== '') {
-			fetch(`//localhost:8000/calculus?query=${encodeURIComponent(input.value)}`)
+			fetch(`https://calc-server-xhelzbygxu.now.sh/calculus?query=${encodeURIComponent(input.value)}`)
 				.then(response => response.json().then((json) => response.ok ? json : Promise.reject(json)))
 				.then(response => { resultValue(response.result); })
 				.catch(error => { errorMessage(error.message ? error.message : 'something went wrong'); })
